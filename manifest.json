@@ -1,0 +1,65 @@
+{
+  // 清单文件的版本，这个必须写，而且必须是2
+  "manifest_version": 2,
+  // 插件的名称
+  "name": "chrome脚本测试",
+  // 插件的版本
+  "version": "1.0.0",
+  // 插件描述
+  "description": "流量数据获取任务",
+  // 图标，一般偷懒全部用一个尺寸的也没问题
+  "icons": {
+    "16": "img/icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://www.amazon.com/*",
+        "*://www.amazon.ca/*",
+        "*://www.amazon.com.mx/*",
+        "*://www.amazon.co.uk/*",
+        "*://www.amazon.de/*",
+        "*://www.amazon.fr/*",
+        "*://www.amazon.it/*",
+        "*://www.amazon.es/*",
+        "*://sellercentral-japan.amazon.com/*",
+        "*://sellercentral.amazon.jp/*"
+      ],
+      "js": [
+        "js/jquery-3.2.1.js",
+        "js/util.js",
+        "js/content.js"
+      ]
+    }
+  ],
+  //向浏览器申请的权限
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "cookies",
+    "webNavigation",
+    "storage",
+    // 如果会在js中请求外域API或者资源，则要把外域链接加入
+    "*://www.amazon.com/*",
+    "*://www.5pbooks.com/*",
+    "webRequest",
+    "dowmload"
+  ],
+  "background": {
+    //数组.chrome会在扩展启动时自动创建一个包含所有指定脚本的页面
+    "scripts": [
+      "js/jquery-3.2.1.js",
+      "js/util.js",
+      "js/background.js"
+    ]
+  },
+  // browser_action，左键点击右上角插件logo时，弹出的popup框。不填此项则点击logo不会有用
+  "browser_action": {
+    "default_icon": {
+      "38": "img/icon.png"
+    },
+    "default_popup": "html/popup.html",
+    // popup页面，其实就是普通的html
+    "default_title": "亚马逊插件"
+  }
+}
