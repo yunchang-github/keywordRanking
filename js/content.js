@@ -1,4 +1,7 @@
 $(function() {
+    let resultArr=[]
+    let total=0
+    let numFlag=0
     var Ajax = {
         get: function(url, fn) {
             // XMLHttpRequest对象用于在后台与服务器交换数据   
@@ -29,140 +32,165 @@ $(function() {
         }
     }
     chrome.storage.sync.get(['now_index'], function(result) {
-        var sortN = result['now_index'].sum;
-        var postCode = result['now_index'].postCode;
-        var num_now = Number(result['now_index'].forN);
-        var countryCode = result['now_index'].countryCode;
-        var err_num = 0;
+        let sortN = result['now_index'].sum;
+        let postcode = result['now_index'].postcode;
+        let num_now = Number(result['now_index'].forN);
+        let country = result['now_index'].country;
+        let mac = result['now_index'].mac;
+        let err_num = 0;
         // console.log(num_now);
         setTimeout(function() {
-            getPostCode(sortN, postCode, num_now, countryCode);
+            getpostcode(sortN, postcode, num_now, country,mac);
         }, 5000);
     });
     //获取关键字邮编
-    // getPostCode(1);
-    function getPostCode(sortN, postCode, num_now, countryCode) {
-        var Data = {
-            'sortN': sortN
-        };
-        var flag = 0;
-        $.ajax({
-            type: 'POST',
-            dataType: 'json',
-            header: {
-                contentType: 'application/x-www-form-urlencoded;charset=utf-8',
-            },
-            data: Data,
-            url: 'https://www.5pbooks.com/pc/amz-postcode/selectByCS?sortN=1',
-            success: function(res) {
-                // console.log('success');
-                // console.log(res);
-                // return;
-                if (res.data) {
-                    var num_all = res.data.length;
-                    // var num_now = 0;
-                    // console.log(num_now);	
-                    // console.log('this now')
+    // getpostcode(1);
+    function getpostcode(sortN, postcode, num_now, country,mac) {
+        // 如果当前已经是目标的邮编了
+        // 判断是否有任务
+        let tempData=JSON.parse(sessionStorage.getItem('yc-postcode'))
+        let postcodePage=document.getElementById('glow-ingress-line2')  
+        if(tempData && postcodePage.innerText.indexOf(tempData[0].postcode)!==-1){
+            // 处理数据
+            handlePostcode(sortN, postcode, num_now, country,mac,tempData)
+        }else{
+            $.ajax({
+                type: 'GET',
+                dataType: 'json',
+                header: {
+                    contentType: 'application/x-www-form-urlencoded;charset=utf-8',
+                },
+                // data: Data,
+                // url: 'https://www.5pbooks.com/pc/amz-postcode/selectByCS?sortN=1',
+                url:"https://www.5pbooks.com/pc/postcode/selParams?threshold="+sortN+"&mac="+mac,
+                success: function(res) {
+                   if(res.data){
+                    handlePostcode(sortN, postcode, num_now, country,mac,res.data)
+                   }
+                },
+                error: function(err) {
+                    console.log('err',err);
+                    if (err_num == 1) {
+                        return;
+                    }
+                    err_num = 1;
                     setTimeout(function() {
-                        var _timer = setInterval(function() {
-                            if (num_now >= num_all) {
-                                var now_index = { 'sum': sortN, 'postCode': 0, 'forN': 0, 'countryCode': 'US' };
-                                chrome.storage.sync.set({ 'now_index': now_index }, function(result) {
-                                    console.log('保存成功');
-                                });
-                                scheduledEveryDayEightHour(() => {
-                                    window.location.href = "https://www.amazon.com";
-                                });
-                                clearInterval(_timer);
-                            } else {
-                                if (res.data[num_now].countryCode == countryCode) {
-
-                                } else {
-                                    var now_index = { 'sum': sortN, 'postCode': postCode, 'forN': num_now, 'countryCode': res.data[num_now].countryCode };
-                                    chrome.storage.sync.set({ 'now_index': now_index }, function(result) {
-                                        console.log('保存成功');
-                                    });
-                                    var _href = 'www.amazon.';
-                                    switch (res.data[num_now].countryCode) {
-                                        case 'US':
-                                            _href = 'www.amazon.com';
-                                            break;
-                                        case 'MX':
-                                            _href = 'www.amazon.com.mx';
-                                            break;
-                                        case 'UK':
-                                            _href = 'www.amazon.co.uk';
-                                            break;
-                                        case 'JP':
-                                            _href = 'www.amazon.co.jp';
-                                            break;
-                                        case 'AU':
-                                            _href = 'www.amazon.com.au';
-                                            break;
-                                        default:
-                                            _href = 'www.amazon.' + (res.data[num_now].countryCode || 'com');
-                                    }
-                                    window.location.href = "https://" + _href;
-                                }
-                                if (res.data[num_now].postId == postCode) {
-                                    //邮编未变化开始抓取数据
-                                    getQuery(res.data[num_now], 1);
-                                    setTimeout(function() {
-                                        getQuery(res.data[num_now], 2);
-                                        flag = 0;
-                                        num_now++;
-                                    }, 3000);
-                                } else {
-                                    var now_index = { 'sum': sortN, 'postCode': res.data[num_now].postId, 'forN': num_now, 'countryCode': countryCode };
-                                    chrome.storage.sync.set({ 'now_index': now_index }, function(result) {
-                                        console.log('保存成功');
-                                    });
-                                    if (flag >= 5) {
-                                        num_now++;
-                                    }
-                                    flag++;
-                                    //需要改邮编
-                                    $('#nav-global-location-slot .nav-a')[0].click();
-                                    setTimeout(function() {
-                                        $("#GLUXChangePostalCodeLink")[0].click();
-                                    }, 1942);
-                                    setTimeout(function() {
-                                        $("#GLUXZipInputSection .a-span8 .a-declarative").val(res.data[num_now].postId);
-                                    }, 2418);
-                                    setTimeout(function() {
-                                        $("#GLUXZipInputSection .a-span-last span span input").click();
-                                    }, 4591);
-                                    setTimeout(function() {
-                                        $(".a-popover-footer span span span button").click();
-                                    }, 6821);
-                                }
-                            }
-
-                        }, 8000);
-                    }, 10000);
-
+                        getpostcode(sortN, postcode, num_now, country,mac);
+                    }, 60 * 60 * 1000);
                 }
-            },
-            error: function(err) {
-                console.log('err');
-                console.log(err);
-                if (err_num == 1) {
-                    return;
-                }
-                err_num = 1;
-                setTimeout(function() {
-                    getPostCode(sortN, postCode, num_now, countryCode);
-                }, 60 * 60 * 1000);
-                // console.log(err);
-            }
-        })
+            })
+        }
     }
-    //获取亚马逊query接口数据，解析数据及入库操作
-    function getQuery(datas, n) {
+    function handlePostcode(sortN, postcode, num_now, country,mac,resData){
+        var flag = 0;
+        var num_all = resData.length;
+        total=num_all
+        if(num_all===0){
+            numFlag ++
+            if(numFlag >1){
+                // 第二次任务为空时 启用定时任务
+                var now_index = { 'sum': sortN, 'postcode': 0, 'forN': 0, 'mac':mac,'country': 'US' };
+                chrome.storage.sync.set({ 'now_index': now_index }, function(result) {
+                    console.log('保存成功');
+                });
+                scheduledEveryDayEightHour(() => {
+                    window.location.href = "https://www.amazon.com";
+                });
+            }else{
+                // 第一次任务为空时 过10分钟再请求一次
+                setTimeout(()=>{
+                    getpostcode(sortN, 0, 0, country,mac)
+                },30000)
+            }
+        }else{
+            let _timer = setInterval(function() {
+                if (num_now >= num_all) {
+                    // 获取下一批任务
+                    clearInterval(_timer);
+                    setTimeout(function() {
+                        getpostcode(sortN, 0, 0, country,mac)
+                    },15000)
+                } else {
+                    // country 目前只有 US
+                    // if (resData[num_now].country == country) {
+
+                    // } else {
+                    //     var now_index = { 'sum': sortN, 'postcode': postcode, 'forN': num_now,'mac':mac, 'country': resData[num_now].country };
+                    //     chrome.storage.sync.set({ 'now_index': now_index }, function(result) {
+                    //         console.log('保存成功');
+                    //     });
+                    //     var _href = 'www.amazon.';
+                    //     switch (resData[num_now].country) {
+                    //         case 'US':
+                    //             _href = 'www.amazon.com';
+                    //             break;
+                    //         case 'MX':
+                    //             _href = 'www.amazon.com.mx';
+                    //             break;
+                    //         case 'UK':
+                    //             _href = 'www.amazon.co.uk';
+                    //             break;
+                    //         case 'JP':
+                    //             _href = 'www.amazon.co.jp';
+                    //             break;
+                    //         case 'AU':
+                    //             _href = 'www.amazon.com.au';
+                    //             break;
+                    //         default:
+                    //             _href = 'www.amazon.' + (resData[num_now].country || 'com');
+                    //     }
+                    //     window.location.href = "https://" + _href;
+                    // }
+                    sessionStorage.removeItem('yc-postcode')
+                    let postcodePage=document.getElementById('glow-ingress-line2')  
+                    if (postcodePage.innerText.indexOf(resData[0].postcode)!==-1 ||　resData[num_now].postcode == postcode) {
+                        //邮编未变化开始抓取数据
+                        getQuery(resData[num_now], 1, num_now,mac);
+                        setTimeout(function() {
+                            getQuery(resData[num_now], 2, num_now,mac);
+                        },1000)
+                        setTimeout(function() {
+                            getQuery(resData[num_now], 3, num_now,mac);
+                            flag = 0;
+                            ++num_now;
+                        }, 2000);
+                    } else {
+                        clearInterval(_timer);
+                        var now_index = { 'sum': sortN, 'postcode': resData[num_now].postcode,'mac':mac, 'forN': num_now, 'country': country };
+                        chrome.storage.sync.set({ 'now_index': now_index }, function(result) {
+                            console.log('保存成功');
+                        });
+                        // 邮编只有5个的判断 ?
+                        if (flag >= 5) {
+                            num_now++;
+                        }
+                        flag++;
+                        // 将已经请求的任务保存在sessionStorage中
+                        sessionStorage.setItem('yc-postcode',JSON.stringify(resData))
+                        //需要改邮编
+                        $('#nav-global-location-slot .nav-a')[0].click();
+                        setTimeout(function() {
+                            $("#GLUXChangePostalCodeLink")[0].click();
+                        }, 1942);
+                        setTimeout(function() {
+                            $("#GLUXZipInputSection .a-span8 .a-declarative").val(resData[num_now].postcode);
+                        }, 2418);
+                        setTimeout(function() {
+                            $("#GLUXZipInputSection .a-span-last span span input").click();
+                        }, 4591);
+                        setTimeout(function() {
+                            $(".a-popover-footer span span span button").click();
+                        }, 6821);
+                    }
+                }
+            }, 4000);
+        }
+    }
+    //获取亚马逊query接口数据，解析数据及入库操作  num是代表当前是第几行的索引
+    function getQuery(datas, n, num, mac) {
         var dates = parseInt(new Date().getTime() / 1000);
-    // https://www.amazon.com/s/query?k=phone12&page=2&qid=1627283291&ref=sr_pg_1
         var Data = {
-            "k": datas.keyWord,
+            "k": datas.keyword,
             "page": n,
             "qid": dates,
             "ref": 'sr_pg_' + n,
@@ -178,19 +206,12 @@ $(function() {
             i++;
         }
         Ajax.get(_url, function(res) {
-            console.log(res);
             var arr = res.split('&&&');
-            console.log(arr.length);
             var Data_arr = [];
             arr.pop();
             for (let i = 0; i < arr.length; i++) {
-                // console.log(arr[i])
-
-                // console.log(arr[i]);
                 arr[i] = eval(arr[i]);
                 arr[i] = arr[i][2];
-                // arr[i] = arr[i][2];
-                // console.log(arr[i])
                 Data_arr[i] = {};
                 if (arr[i].asin) {
                     Data_arr[i].asin = arr[i].asin;
@@ -216,57 +237,76 @@ $(function() {
                     i--;
                 }
             }
-            var data = {
-                "pageJSON": {
-                    "serchTerm": datas.keyWord,
-                    "postCode": datas.postId,
-                    "page": n,
-                    "date": getDates(),
-                    "dataArr": Data_arr
+            Data_arr.forEach((item,index)=>{
+                if(!item.asin){
+                    Data_arr.splice(index, 1);
+                }else{
+                    item['serchTerm']=datas.keyword
+                    item['postCode']=datas.postcode
+                    item['page']=n,
+                    item['keyId']=datas.keyId
+                }
+            })
+            let _data={}
+            let tempArr=[]
+            let insertNum=10
+            if(total==11){
+                insertNum=6
+            }
+            for (let j = 0; j < total; j++){
+                if((j+1) % insertNum ==0) tempArr.push(j)
+            } 
+            let tempFlag=tempArr.some(item=>{
+                return item===num
+              })
+            if(tempFlag &&　n ===3){
+                resultArr=[...resultArr,...Data_arr]
+                _data = {
+                    "pageJSON": {
+                        "date": getDates(),
+                        "mac":mac,
+                        "country":datas.country,
+                        "dataArr": resultArr
+                    }
+                }
+                hanleResult(_data)
+                resultArr=[]
+            }else{
+                // 判断是否是最后一条
+                if(num == total-1 && n ===3){
+                    resultArr=[...resultArr,...Data_arr]
+                    _data = {
+                        "pageJSON": {
+                            "date": getDates(),
+                            "mac":mac,
+                            "country":datas.country,
+                            "dataArr": resultArr
+                        }
+                    }
+                    hanleResult(_data)
+                    resultArr=[]
+                }else{
+                    resultArr=[...resultArr,...Data_arr] 
                 }
             }
-            data = JSON.stringify(data);
-            $.ajax({
-                type: "POST",
-                dataType: 'json',
-                contentType: 'application/json;charset=utf-8',
-                url: 'https://www.5pbooks.com/pc/amz-page-data/insert',
-                data: data,
-                success: function(res) {
-                    console.log(res);
-                },
-                error: function(err) {
-                    console.log(err);
-                }
-            });
-            // return;
-            // var oStr = '';
-            //       var oAjax = null;
-            //       //这里需要将json数据转成post能够进行提交的字符串  name1=value1&name2=value2格式
-            //       data = JSON.stringify(data);
-            //       //这里进行HTTP请求
-            //       try{
-            //       　　oAjax = new XMLHttpRequest();
-            //       }catch(e){
-            //       　　oAjax = new ActiveXObject("Microsoft.XMLHTTP");
-            //       };
-            //       //post方式打开文件
-            //       oAjax.open('post','https://www.5pbooks.com/pc/amz-page-data/insert',true);
-            //       //post相比get方式提交多了个这个
-            //       oAjax.setRequestHeader("Content-type","application/json");
-            //       //post发送数据
-            //       oAjax.send(data);
-            //       oAjax.onreadystatechange = function(){
-            //       　　//当状态为4的时候，执行以下操作
-            //       　　if(oAjax.readyState == 4){
-            //       　　　　try{
-            //                   console.log(oAjax.responseText);
-            //                   console.log(oAjax);
-            //       　　　　}catch(e){
-            //       　　　　　　alert('你访问的页面出错了');
-            //       　　　　};
-            //       　　};
-            //       };
+        });
+    }
+    // 数据存入接口  10个关键词一组
+    function hanleResult(_data){
+        data = JSON.stringify(_data);
+        $.ajax({
+            type: "POST",
+            dataType: 'json',
+            contentType: 'application/json;charset=utf-8',
+            // url: 'https://www.5pbooks.com/pc/amz-page-data/insert',
+            url: 'https://www.5pbooks.com/pc/postcode/insertPageDataPlus',
+            data: data,
+            success: function(res) {
+                console.log(res);
+            },
+            error: function(err) {
+                console.log(err);
+            }
         });
     }
     //删除标签
