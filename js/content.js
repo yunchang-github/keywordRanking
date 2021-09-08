@@ -37,22 +37,26 @@ $(function() {
         let num_now = Number(result['now_index'].forN);
         let country = result['now_index'].country;
         let mac = result['now_index'].mac;
+        let postData=result['now_index'].data
         let err_num = 0;
         // console.log(num_now);
         setTimeout(function() {
-            getpostcode(sortN, postcode, num_now, country,mac);
+            getpostcode(sortN, postcode, num_now, country,mac,postData);
         }, 5000);
     });
     //获取关键字邮编
     // getpostcode(1);
-    function getpostcode(sortN, postcode, num_now, country,mac) {
+    function getpostcode(sortN, postcode, num_now, country,mac,postData) {
         // 如果当前已经是目标的邮编了
         // 判断是否有任务
-        let tempData=JSON.parse(sessionStorage.getItem('yc-postcode'))
+        let tempData=postData
         let postcodePage=document.getElementById('glow-ingress-line2')  
-        if(tempData && postcodePage.innerText.indexOf(tempData[0].postcode)!==-1){
-            // 处理数据
-            handlePostcode(sortN, postcode, num_now, country,mac,tempData)
+        if(tempData.length > 0){
+           let tempCode=tempData[0].postcode.substring(0,4)
+            if(postcodePage.innerText.indexOf(tempCode)!==-1){
+                // 处理数据
+                handlePostcode(sortN, postcode, num_now, country,mac,tempData)
+            }
         }else{
             $.ajax({
                 type: 'GET',
@@ -89,7 +93,7 @@ $(function() {
             numFlag ++
             if(numFlag >1){
                 // 第二次任务为空时 启用定时任务
-                var now_index = { 'sum': sortN, 'postcode': 0, 'forN': 0, 'mac':mac,'country': 'US' };
+                var now_index = { 'sum': sortN, 'postcode': 0, 'forN': 0, 'mac':mac,'country': country ,data:[]};
                 chrome.storage.sync.set({ 'now_index': now_index }, function(result) {
                     console.log('保存成功');
                 });
@@ -99,8 +103,8 @@ $(function() {
             }else{
                 // 第一次任务为空时 过10分钟再请求一次
                 setTimeout(()=>{
-                    getpostcode(sortN, 0, 0, country,mac)
-                },30000)
+                    getpostcode(sortN, 0, 0, country,mac,[])
+                },615000)
             }
         }else{
             let _timer = setInterval(function() {
@@ -108,86 +112,97 @@ $(function() {
                     // 获取下一批任务
                     clearInterval(_timer);
                     setTimeout(function() {
-                        getpostcode(sortN, 0, 0, country,mac)
+                        getpostcode(sortN, 0, 0, country,mac,[])
                     },15000)
                 } else {
-                    // country 目前只有 US
-                    // if (resData[num_now].country == country) {
-
-                    // } else {
-                    //     var now_index = { 'sum': sortN, 'postcode': postcode, 'forN': num_now,'mac':mac, 'country': resData[num_now].country };
-                    //     chrome.storage.sync.set({ 'now_index': now_index }, function(result) {
-                    //         console.log('保存成功');
-                    //     });
-                    //     var _href = 'www.amazon.';
-                    //     switch (resData[num_now].country) {
-                    //         case 'US':
-                    //             _href = 'www.amazon.com';
-                    //             break;
-                    //         case 'MX':
-                    //             _href = 'www.amazon.com.mx';
-                    //             break;
-                    //         case 'UK':
-                    //             _href = 'www.amazon.co.uk';
-                    //             break;
-                    //         case 'JP':
-                    //             _href = 'www.amazon.co.jp';
-                    //             break;
-                    //         case 'AU':
-                    //             _href = 'www.amazon.com.au';
-                    //             break;
-                    //         default:
-                    //             _href = 'www.amazon.' + (resData[num_now].country || 'com');
-                    //     }
-                    //     window.location.href = "https://" + _href;
-                    // }
-                    sessionStorage.removeItem('yc-postcode')
-                    let postcodePage=document.getElementById('glow-ingress-line2')  
-                    if (postcodePage.innerText.indexOf(resData[0].postcode)!==-1 ||　resData[num_now].postcode == postcode) {
-                        //邮编未变化开始抓取数据
-                        getQuery(resData[num_now], 1, num_now,mac);
-                        setTimeout(function() {
-                            getQuery(resData[num_now], 2, num_now,mac);
-                        },1000)
-                        setTimeout(function() {
-                            getQuery(resData[num_now], 3, num_now,mac);
-                            flag = 0;
-                            ++num_now;
-                        }, 2000);
-                    } else {
-                        clearInterval(_timer);
-                        var now_index = { 'sum': sortN, 'postcode': resData[num_now].postcode,'mac':mac, 'forN': num_now, 'country': country };
+                    // country 目前只有 US  CA
+                    var _href = 'www.amazon.';
+                    switch (resData[0].country) {
+                        case 'US':
+                            _href = 'www.amazon.com';
+                            break;
+                        case 'MX':
+                            _href = 'www.amazon.com.mx';
+                            break;
+                        case 'UK':
+                            _href = 'www.amazon.co.uk';
+                            break;
+                        case 'JP':
+                            _href = 'www.amazon.co.jp';
+                            break;
+                        case 'AU':
+                            _href = 'www.amazon.com.au';
+                            break;
+                        default:
+                            _href = 'www.amazon.' + (resData[0].country || 'com');
+                    }
+                    // 国家是否相同  不同切国家
+                    if (resData[0].country !== country) {
+                        var now_index = { 'sum': sortN, 'postcode': postcode, 'forN': num_now,'mac':mac, 'country': resData[0].country,data:resData };
                         chrome.storage.sync.set({ 'now_index': now_index }, function(result) {
                             console.log('保存成功');
                         });
-                        // 邮编只有5个的判断 ?
-                        if (flag >= 5) {
-                            num_now++;
+                        window.location.href = "https://" + _href;
+                    }else{
+                        let postcodePage=document.getElementById('glow-ingress-line2')  
+                        let tempCode=resData[num_now].postcode.substring(0,4)
+                        if (postcodePage.innerText.indexOf(tempCode)!==-1) {
+                            //邮编未变化开始抓取数据
+                            getQuery(resData[num_now], 1, num_now,mac,_href);
+                            setTimeout(function() {
+                                getQuery(resData[num_now], 2, num_now,mac,_href);
+                            },1000)
+                            setTimeout(function() {
+                                getQuery(resData[num_now], 3, num_now,mac,_href);
+                                flag = 0;
+                                ++num_now;
+                            }, 2000);
+                        } else {
+                            clearInterval(_timer);
+                            var now_index = { 'sum': sortN, 'postcode': resData[num_now].postcode,'mac':mac, 'forN': num_now, 'country': resData[num_now].country,data:resData };
+                            chrome.storage.sync.set({ 'now_index': now_index }, function(result) {
+                                console.log('保存成功');
+                            });
+                            // 邮编只有5个的判断 ?
+                            if (flag >= 5) {
+                                num_now++;
+                            }
+                            flag++;
+                             //需要改邮编
+                            if(resData[num_now].country=='CA'){
+                                $('#nav-global-location-slot .nav-a')[0].click();
+                                setTimeout(function() {
+                                    $("#GLUXZipUpdateInput_0").val(resData[num_now].postcode.split(" ")[0]);
+                                }, 2418);
+                                setTimeout(function() {
+                                    $("#GLUXZipUpdateInput_1").val(resData[num_now].postcode.split(" ")[1]);
+                                }, 4591);
+                                setTimeout(function() {
+                                    $("#GLUXZipUpdate-announce").click();
+                                }, 6821);
+                            }else{
+                                $('#nav-global-location-slot .nav-a')[0].click();
+                                setTimeout(function() {
+                                    $("#GLUXChangePostalCodeLink")[0].click();
+                                }, 1942);
+                                setTimeout(function() {
+                                    $("#GLUXZipInputSection .a-span8 .a-declarative").val(resData[num_now].postcode);
+                                }, 2418);
+                                setTimeout(function() {
+                                    $("#GLUXZipInputSection .a-span-last span span input").click();
+                                }, 4591);
+                                setTimeout(function() {
+                                    $(".a-popover-footer span span span button").click();
+                                }, 6821);
+                            }
                         }
-                        flag++;
-                        // 将已经请求的任务保存在sessionStorage中
-                        sessionStorage.setItem('yc-postcode',JSON.stringify(resData))
-                        //需要改邮编
-                        $('#nav-global-location-slot .nav-a')[0].click();
-                        setTimeout(function() {
-                            $("#GLUXChangePostalCodeLink")[0].click();
-                        }, 1942);
-                        setTimeout(function() {
-                            $("#GLUXZipInputSection .a-span8 .a-declarative").val(resData[num_now].postcode);
-                        }, 2418);
-                        setTimeout(function() {
-                            $("#GLUXZipInputSection .a-span-last span span input").click();
-                        }, 4591);
-                        setTimeout(function() {
-                            $(".a-popover-footer span span span button").click();
-                        }, 6821);
                     }
                 }
             }, 4000);
         }
     }
     //获取亚马逊query接口数据，解析数据及入库操作  num是代表当前是第几行的索引
-    function getQuery(datas, n, num, mac) {
+    function getQuery(datas, n, num, mac,href) {
         var dates = parseInt(new Date().getTime() / 1000);
         var Data = {
             "k": datas.keyword,
@@ -195,7 +210,7 @@ $(function() {
             "qid": dates,
             "ref": 'sr_pg_' + n,
         };
-        var _url = 'https://www.amazon.com/s/query?'
+        var _url = 'https://'+ href + '/s/query?'
         var i = 0;
         for (keys in Data) {
             if (i == 0) {

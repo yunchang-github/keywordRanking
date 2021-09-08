@@ -42,8 +42,7 @@
     // 如果会在js中请求外域API或者资源，则要把外域链接加入
     "*://www.amazon.com/*",
     "*://www.5pbooks.com/*",
-    "webRequest",
-    "dowmload"
+    "webRequest"
   ],
   "background": {
     //数组.chrome会在扩展启动时自动创建一个包含所有指定脚本的页面

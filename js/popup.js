@@ -7,7 +7,7 @@ $('#begin').click(() => {
     }
     let mac=new Date().getTime()
     window.open("https://www.amazon.com");
-    var now_index = {"sum":sum,'postcode':0,'mac':mac,'forN':0,'country':'US'};
+    var now_index = {"sum":sum,'postcode':0,'mac':mac,'forN':0,'country':'US',data:[]};
     chrome.storage.sync.set({'now_index':now_index}, function (result) {
         console.log("保存成功");
     });

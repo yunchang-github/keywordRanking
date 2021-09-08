@@ -67,7 +67,7 @@ function scheduledEveryDayEightHour(success = function() {
 
 }) {
     //定时任务开始的分钟数   8点  8,0,0   15点6分   15,6,0
-    let everyDayEightHourSecond = hourMinuteSecondToSecond(14, 50, 0);
+    let everyDayEightHourSecond = hourMinuteSecondToSecond(1, 0, 0);
     let date = new Date();
     let hour = date.getHours();
     let minute = date.getMinutes();
